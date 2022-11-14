@@ -33,9 +33,11 @@ const NavBar = () => {
       </Link>
         {auth._id ? (
           <Links>
+          {auth.isAdmin ? (
           <div>
             <Link to="/admin/summary">Admin</Link>
           </div>
+          ) : null}
         <div 
           onClick={() => {
             dispatch(logoutUser(null));

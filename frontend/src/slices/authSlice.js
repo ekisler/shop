@@ -2,12 +2,14 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from                                                                                                                                                                                                                      "axios";
 import { url } from "./api"; 
 import jwtDecode from "jwt-decode";
+import { setHeaders } from "./api";
 
 const initialState = {
     token: localStorage.getItem("token"),
     name: "",
     email: "",
-    _id: "",                                                                                                             
+    _id: "",   
+    isAdmin: false,                                                                                                          
     registerStatus: "",
     registerError: "",
     loginStatus: "",
@@ -28,7 +30,6 @@ export const registerUser = createAsyncThunk(
             localStorage.setItem("token", token.data)
 
             return token.data
-
         } catch(err) {
             console.log(err.response.data);
             return rejectWithValue(err.response.data);
@@ -53,6 +54,22 @@ export const loginUser = createAsyncThunk(
         }
     }
 );
+
+export const getUser = createAsyncThunk(
+    "auth/getUser",
+    async (id, { rejectWithValue }) => {
+      try {
+        const token = await axios.get(`${url}/user/${id}`, setHeaders());
+  
+        localStorage.setItem("token", token.data);
+  
+        return token.data;
+      } catch (error) {
+        console.log(error.response);
+        return rejectWithValue(error.response.data);
+      }
+    }
+  );
 
 const authSlice = createSlice({
     name: "auth",
@@ -105,6 +122,7 @@ const authSlice = createSlice({
                 name: user.name,
                 email: user.email,
                 _id: user._id,
+                isAdmin: user.isAdmin,
                 registerStatus: "success",
             };  
         } else return state;
@@ -128,6 +146,7 @@ const authSlice = createSlice({
                 name: user.name,
                 email: user.email,
                 _id: user._id,
+                isAdmin: user.isAdmin,
                 loginStatus: "success",
             };  
         } else return state;
@@ -139,6 +158,33 @@ const authSlice = createSlice({
                 loginError: action.payload,
             };
         });
+        builder.addCase(getUser.pending, (state, action) => {
+            return {
+              ...state,
+              getUserStatus: "pending",
+            };
+          });
+          builder.addCase(getUser.fulfilled, (state, action) => {
+            if (action.payload) {
+              const user = jwtDecode(action.payload);
+              return {
+                ...state,
+                token: action.payload,
+                name: user.name,
+                email: user.email,
+                _id: user._id,
+                isAdmin: user.isAdmin,
+                getUserStatus: "success",
+              };
+            } else return state;
+          });
+          builder.addCase(getUser.rejected, (state, action) => {
+            return {
+              ...state,
+              getUserStatus: "rejected",
+              getUserError: action.payload,
+            };
+          });
     },
 });
 
