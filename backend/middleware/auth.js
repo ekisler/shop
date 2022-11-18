@@ -10,6 +10,7 @@ const auth = (req, res, next) => {
     const user = jwt.verify(token, jwtSecretKey);
 
     req.user = user;
+    
     next();
   } catch (ex) {
     res.status(400).send("Access denied. Invalid auth token...");

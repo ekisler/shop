@@ -12,7 +12,6 @@ router.post('/create-checkout-session', async (req, res) => {
   const customer = await stripe.customers.create({
     metadata: {
       userId: req.body.userId,
-      cart: JSON.stringify(req.body.cartItems),
     },
   });
   
@@ -22,7 +21,7 @@ router.post('/create-checkout-session', async (req, res) => {
         currency: 'usd',
         product_data: {
           name: item.name,
-          images: [item.image],
+          images: [item.image.url],
           description: item.desc,
           metadata: {
             id: item.id,
@@ -97,14 +96,12 @@ router.post('/create-checkout-session', async (req, res) => {
 });
 
 // Create Order
-const createOrder = async(customer, data) => {
-  const Items = JSON.parse(customer.metadata.cart);
-
+const createOrder = async(customer, data, lineItems) => {
   const newOrder = new Order({
     userId: customer.metadata.userId,
     customerId: data.customer,
     paymentIntentId: data.payment_intent,
-    products: Items,
+    products: lineItems.data,
     subtotal: data.amount_subtotal,
     total: data.amount_total,
     shipping: data.customer_details,
@@ -145,8 +142,9 @@ router.post(
         endpointSecret
         );
     } catch (err) {
-      console.log(`Webhook Error: ${err}`)
-      return res.sendStatus(400);
+      console.log(`Webhook Error: ${err.message}`);
+      res.status(400).send(`Webhook Error: ${err.message}`);
+      return 
     }
     // Extract the object from the event.
     data = event.data.object;
@@ -162,14 +160,21 @@ router.post(
   if(eventType === "checkout.session.completed") {
     stripe.customers
     .retrieve(data.customer)
-    .then(async (customer) => {
-        createOrder(customer, data);
+    .then((customer) => {
+      stripe.checkout.sessions.listLineItems(
+        data.id,
+        {},
+        function(err, lineItems) {
+          console.log("Line_items", lineItems)
+          createOrder(customer, data, lineItems);
+        } 
+      );
       })
       .catch((err) => console.log(err.message));
   }
 
   // Return a 200 response to acknowledge receipt of the event
-  res.status(200).end();
+  res.send().end();
 }
 );
 

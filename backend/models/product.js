@@ -5,7 +5,7 @@ const productSchema = new mongoose.Schema(
     id: {
         type: String,
         primaryKey: true,
-        allowNull: false,
+        
       },
     name: 
     {
